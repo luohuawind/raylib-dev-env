@@ -1,0 +1,63 @@
+name: Publish Docker image to GHCR
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+jobs:
+  check_changes:
+    name: Determine changed paths
+    runs-on: ubuntu-latest
+    outputs:
+      docker: ${{ steps.filter.outputs.docker }}
+      wiki: ${{ steps.filter.outputs.wiki }}
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v4
+
+      - name: Filter changed paths
+        id: filter
+        uses: dorny/paths-filter@v2
+        with:
+          filters: |
+            docker:
+              - 'Dockerfile'
+              - '.dockerignore'
+              - 'user_code/**'
+            wiki:
+              - 'wiki/**'
+
+  push_to_registry:
+    needs: check_changes
+    if: ${{ github.event_name == 'workflow_dispatch' || needs.check_changes.outputs.docker == 'true' }}
+    name: Push Docker image to GitHub Packages
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v4
+
+      - name: Log in to the Container registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ghcr.io/gm64x/raylibcontainer:latest
+          labels: ${{ steps.meta.outputs.labels }}
