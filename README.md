@@ -1,6 +1,5 @@
 # RayLib 游戏开发环境
 
-> 来源：https://github.com/gm64x/RayLibContainer
 > 用途：代码标注训练素材
 
 ## 项目简介
